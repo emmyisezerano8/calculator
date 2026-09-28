@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathLab Pro — GeoGebra / Photomath Style Calculator</title>
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjs@14.0.1/lib/browser/math.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/all.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #202126;
+            --panel: #26272c;
+            --panel2: #2d2e33;
+            --key: #292a2e;
+            --func: #422f33;
+            --text: #f5f6f8;
+            --muted: #9da1aa;
+            --border: #46484f;
+            --accent: #f5a9b8;
+            --accentText: #17181b;
+            --blue: #a9c8ff;
+            --green: #8ed8b4;
+            --danger: #ff9c9c;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, Segoe UI, Arial, sans-serif;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font: inherit
+        }
+
+        button {
+            cursor: pointer
+        }
+
+        .app {
+            width: min(1180px, 96%);
+            margin: 18px auto 35px;
+        }
+
+        .top {
+            border: 1px solid var(--border);
+            border-radius: 25px;
+            background: #212227;
+            overflow: hidden;
+        }
+
+        .display {
+            min-height: 118px;
+            padding: 18px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: right;
+        }
+
+        .display .small {
+            color: var(--muted);
+            min-height: 24px;
+            font-size: 15px;
+            overflow-wrap: anywhere;
+        }
+
+        .display .big {
+            font-size: 32px;
+            min-height: 46px;
+            overflow-wrap: anywhere;
+        }
+
+        .tabs {
+            display: flex;
+            border-top: 1px solid #36383e;
+            overflow: auto;
+        }
+
+        .tab {
+            border: 0;
+            background: transparent;
+            color: #aeb1b9;
+            padding: 17px 26px;
+            font-size: 18px;
+            position: relative;
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            color: #fff
+        }
+
+        .tab.active:after {
+            content: "";
+            position: absolute;
+            left: 22px;
+            right: 22px;
+            bottom: 0;
+            height: 3px;
+            background: var(--blue);
+            border-radius: 3px;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(0, 1.5fr) minmax(280px, .8fr);
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .card {
+            border: 1px solid var(--border);
+            background: #24252a;
+            border-radius: 22px;
+            padding: 18px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .input {
+            flex: 1;
+            min-width: 0;
+            background: #17181b;
+            color: #fff;
+            border: 1px solid #4a4c53;
+            border-radius: 16px;
+            padding: 15px 16px;
+            outline: none;
+            font-size: 18px;
+        }
+
+        .input:focus {
+            border-color: var(--blue)
+        }
+
+        .primary {
+            border: 0;
+            border-radius: 16px;
+            padding: 0 20px;
+            background: var(--accent);
+            color: var(--accentText);
+            font-weight: 700;
+        }
+
+        .secondary {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: #303137;
+            color: #fff;
+            padding: 10px 14px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 13px 0 0;
+        }
+
+        .chip {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: #2c2d32;
+            color: #dddfe4;
+        }
+
+        .chip:hover,
+        .secondary:hover {
+            background: #37383e
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-top: 15px;
+        }
+
+        .key {
+            min-height: 57px;
+            border: 0;
+            border-radius: 28px;
+            background: var(--key);
+            color: #f4f4f6;
+            font-size: 18px;
+        }
+
+        .key:hover {
+            background: #34353a
+        }
+
+        .key.func {
+            background: var(--func);
+            font-family: Georgia, serif
+        }
+
+        .key.op {
+            background: #33343a;
+            font-size: 21px
+        }
+
+        .key.eq {
+            background: var(--accent);
+            color: var(--accentText);
+            font-size: 25px;
+            font-weight: 800
+        }
+
+        .key.wide {
+            grid-column: span 2
+        }
+
+        .result {
+            min-height: 180px;
+            margin-top: 15px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 18px;
+            background: #1c1d21;
+        }
+
+        .result-title {
+            color: #aeb1b9;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: 10px;
+        }
+
+        .answer {
+            font-size: 25px;
+            overflow-wrap: anywhere;
+        }
+
+        .steps {
+            margin-top: 15px;
+            color: #d5d7dc;
+            line-height: 1.65;
+        }
+
+        .steps .step {
+            padding: 9px 0;
+            border-bottom: 1px solid #34353a;
+        }
+
+        .side h3 {
+            margin: 0 0 12px
+        }
+
+        .mode-desc {
+            color: var(--muted);
+            line-height: 1.55;
+            font-size: 14px
+        }
+
+        .history {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 440px;
+            overflow: auto;
+        }
+
+        .history-item {
+            border: 1px solid #3e4046;
+            background: #202126;
+            border-radius: 12px;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .history-item:hover {
+            background: #2a2b30
+        }
+
+        .history-item .q {
+            color: #b8bbc3;
+            font-size: 13px
+        }
+
+        .history-item .a {
+            margin-top: 4px
+        }
+
+        .graph-wrap {
+            margin-top: 15px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 12px;
+            background: #17181b;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 310px
+        }
+
+        .hidden {
+            display: none !important
+        }
+
+        .notice {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .error {
+            color: var(--danger)
+        }
+
+        .success {
+            color: var(--green)
+        }
+
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .example {
+            border: 1px solid var(--border);
+            background: #2a2b30;
+            color: #ddd;
+            border-radius: 13px;
+            padding: 9px 12px;
+        }
+
+        label {
+            display: block;
+            color: #b8bbc3;
+            font-size: 13px;
+            margin: 10px 0 6px;
+        }
+
+        .select,
+        .mini-input {
+            width: 100%;
+            background: #17181b;
+            color: #fff;
+            border: 1px solid #4a4c53;
+            border-radius: 12px;
+            padding: 11px;
+        }
+
+        .row2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media(max-width:800px) {
+            .workspace {
+                grid-template-columns: 1fr
+            }
+
+            .keypad {
+                grid-template-columns: repeat(5, 1fr)
+            }
+
+            .key {
+                min-height: 52px
+            }
+        }
+
+        @media(max-width:520px) {
+            .app {
+                width: 98%;
+                margin-top: 6px
+            }
+
+            .display {
+                min-height: 95px;
+                padding: 14px
+            }
+
+            .display .big {
+                font-size: 25px
+            }
+
+            .tab {
+                padding: 14px 18px
+            }
+
+            .input-row {
+                flex-direction: column
+            }
+
+            .primary {
+                min-height: 48px
+            }
+
+            .keypad {
+                grid-template-columns: repeat(4, 1fr)
+            }
+
+            .key {
+                min-height: 49px;
+                font-size: 16px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app" id="app">
+
+        <section class="top">
+            <div class="display">
+                <div class="small" id="displayExpression">Ready</div>
+                <div class="big" id="displayResult">0</div>
+            </div>
+
+            <nav class="tabs" aria-label="Math modes">
+                <button class="tab active" data-mode="algebra">Algebra</button>
+                <button class="tab" data-mode="trigonometry">Trigonometry</button>
+                <button class="tab" data-mode="calculus">Calculus</button>
+                <button class="tab" data-mode="quadratic">Quadratic</button>
+                <button class="tab" data-mode="graph">Graph</button>
+            </nav>
+        </section>
+
+        <div class="workspace">
+
+            <main>
+                <section class="card">
+                    <div class="input-row">
+                        <input id="expressionInput" class="input" autocomplete="off"
+                            placeholder="Try: 4x^2 - 5x - 12 = 0">
+                        <button id="solveBtn" class="primary">Solve</button>
+                    </div>
+
+                    <div class="controls" id="quickControls">
+                        <button class="chip" data-insert="x">x</button>
+                        <button class="chip" data-insert="y">y</button>
+                        <button class="chip" data-insert="^">^</button>
+                        <button class="chip" data-insert="(">(</button>
+                        <button class="chip" data-insert=")">)</button>
+                        <button class="chip" data-insert="sqrt(">√</button>
+                        <button class="chip" data-insert="sin(">sin</button>
+                        <button class="chip" data-insert="cos(">cos</button>
+                        <button class="chip" data-insert="tan(">tan</button>
+                        <button class="chip" data-insert="pi">π</button>
+                    </div>
+
+                    <div class="keypad">
+                        <button class="key func" data-insert="d/dx(">d/dx</button>
+                        <button class="key func" data-insert="integrate(">∫</button>
+                        <button class="key func" data-insert="limit(">lim</button>
+                        <button class="key func" data-insert="log(">log</button>
+                        <button class="key func" data-insert="ln(">ln</button>
+                        <button class="key func" data-insert="abs(">abs</button>
+                        <button class="key" data-action="clear">AC</button>
+
+                        <button class="key" data-insert="7">7</button>
+                        <button class="key" data-insert="8">8</button>
+                        <button class="key" data-insert="9">9</button>
+                        <button class="key op" data-insert="/">÷</button>
+                        <button class="key" data-insert=",">,</button>
+                        <button class="key" data-insert="=">=</button>
+                        <button class="key" data-action="backspace">⌫</button>
+
+                        <button class="key" data-insert="4">4</button>
+                        <button class="key" data-insert="5">5</button>
+                        <button class="key" data-insert="6">6</button>
+                        <button class="key op" data-insert="*">×</button>
+                        <button class="key" data-insert="x">x</button>
+                        <button class="key" data-insert="y">y</button>
+                        <button class="key" data-insert="e">e</button>
+
+                        <button class="key" data-insert="1">1</button>
+                        <button class="key" data-insert="2">2</button>
+                        <button class="key" data-insert="3">3</button>
+                        <button class="key op" data-insert="-">−</button>
+                        <button class="key" data-insert="sin(">sin</button>
+                        <button class="key" data-insert="cos(">cos</button>
+                        <button class="key" data-insert="tan(">tan</button>
+
+                        <button class="key wide" data-insert="0">0</button>
+                        <button class="key" data-insert=".">.</button>
+                        <button class="key op" data-insert="+">+</button>
+                        <button class="key eq" data-action="solve">➤</button>
+                    </div>
+
+                    <div class="examples">
+                        <button class="example" data-example="6x + 5 = 14">6x + 5 = 14</button>
+                        <button class="example" data-example="(x + 5)(x + 2)">Expand polynomial</button>
+                        <button class="example" data-example="4x^2 - 5x - 12 = 0">4x² − 5x − 12 = 0</button>
+                        <button class="example" data-example="d/dx(x^3 + 2x^2 - 5x)">Derivative</button>
+                        <button class="example" data-example="integrate(x^2 + 2*x, x)">Integral</button>
+                        <button class="example" data-example="limit((sin(x))/x, x, 0)">Limit</button>
+                    </div>
+
+                    <div id="resultBox" class="result" aria-live="polite">
+                        <div class="result-title">Result</div>
+                        <div id="answer" class="answer">Enter a problem and press Solve.</div>
+                        <div id="steps" class="steps"></div>
+                    </div>
+
+                    <div id="graphWrap" class="graph-wrap hidden">
+                        <div class="result-title">Function graph</div>
+                        <canvas id="graph" width="900" height="310"></canvas>
+                        <div class="notice">Use Graph mode and enter a function such as <b>sin(x)</b>, <b>x^2-4</b>, or
+                            <b>cos(x)</b>.</div>
+                    </div>
+                </section>
+            </main>
+
+            <aside class="side">
+                <section class="card">
+                    <h3>MathLab Pro</h3>
+                    <div id="modeDescription" class="mode-desc">
+                        Solve equations, simplify expressions and expand polynomials.
+                    </div>
+
+                    <div class="row2">
+                        <div>
+                            <label for="variable">Variable</label>
+                            <input id="variable" class="mini-input" value="x">
+                        </div>
+                        <div>
+                            <label for="angleMode">Angles</label>
+                            <select id="angleMode" class="select">
+                                <option value="rad">Radians</option>
+                                <option value="deg">Degrees</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <button class="secondary" id="clearHistory">Clear history</button>
+                        <button class="secondary" id="copyAnswer">Copy answer</button>
+                    </div>
+                </section>
+
+                <section class="card" style="margin-top:16px">
+                    <h3>History</h3>
+                    <div id="history" class="history">
+                        <div class="notice">No calculations yet.</div>
+                    </div>
+                </section>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            "use strict";
+
+            const $ = id => document.getElementById(id);
+            const input = $("expressionInput");
+            const answer = $("answer");
+            const steps = $("steps");
+            const displayExpression = $("displayExpression");
+            const displayResult = $("displayResult");
+            const modeDescription = $("modeDescription");
+            const graphWrap = $("graphWrap");
+            const historyEl = $("history");
+            const variableEl = $("variable");
+            const angleMode = $("angleMode");
+
+            let currentMode = "algebra";
+            let history = [];
+            let lastAnswerText = "";
+
+            const descriptions = {
+                algebra: "Solve equations, simplify expressions and expand polynomials.",
+                trigonometry: "Evaluate sin, cos and tan, or solve common trigonometric equations.",
+                calculus: "Differentiate, integrate and calculate limits.",
+                quadratic: "Solve ax² + bx + c = 0 and show the discriminant and roots.",
+                graph: "Plot a mathematical function on a coordinate plane."
+            };
+
+            function escapeHtml(s) {
+                return String(s).replace(/[&<>"']/g, c => ({
+                    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+                }[c]));
+            }
+
+            function setDisplay(expr, result) {
+                displayExpression.textContent = expr || "Ready";
+                displayResult.textContent = result || "0";
+            }
+
+            function addStep(text) {
+                const div = document.createElement("div");
+                div.className = "step";
+                div.innerHTML = text;
+                steps.appendChild(div);
+            }
+
+            function latexSafe(text) {
+                return String(text)
+                    .replace(/\\/g, "\\\\")
+                    .replace(/([{}])/g, "$1");
+            }
+
+            function renderMath() {
+                if (window.MathJax && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([answer, steps, displayResult]).catch(() => { });
+                }
+            }
+
+            function normalize(s) {
+                return String(s)
+                    .trim()
+                    .replace(/[−–—]/g, "-")
+                    .replace(/×/g, "*")
+                    .replace(/÷/g, "/")
+                    .replace(/π/g, "pi")
+                    .replace(/√/g, "sqrt")
+                    .replace(/²/g, "^2")
+                    .replace(/³/g, "^3");
+            }
+
+            function toMathJsExpression(s) {
+                return normalize(s)
+                    .replace(/\bln\b/g, "log")
+                    .replace(/\^/g, "^");
+            }
+
+            function isValidNumber(n) {
+                return Number.isFinite(Number(n));
+            }
+
+            function cleanNerdamer(s) {
+                return String(s)
+                    .replace(/\*\*/g, "^")
+                    .replace(/\bsin\b/g, "sin")
+                    .replace(/\bcos\b/g, "cos")
+                    .replace(/\btan\b/g, "tan");
+            }
+
+            function nerd(expr) {
+                if (!window.nerdamer) throw new Error("Symbolic engine is still loading.");
+                return nerdamer(expr);
+            }
+
+            function prettySymbolic(expr) {
+                try {
+                    const n = nerd(expr);
+                    return n.toTeX();
+                } catch {
+                    return escapeHtml(String(expr));
+                }
+            }
+
+            function showResult(title, resultHtml, exprForDisplay) {
+                answer.innerHTML = resultHtml;
+                steps.innerHTML = "";
+                setDisplay(exprForDisplay || input.value, title);
+                lastAnswerText = answer.textContent.trim();
+                renderMath();
+            }
+
+            function solveLinearOrGeneralEquation(expr) {
+                const variable = (variableEl.value || "x").trim() || "x";
+                const parts = expr.split("=");
+                if (parts.length !== 2) return false;
+
+                const left = normalize(parts[0]);
+                const right = normalize(parts.slice(1).join("="));
+                const equation = "(" + left + ")-(" + right + ")";
+
+                try {
+                    const solutions = nerd(equation).solveFor(variable);
+                    const solText = String(solutions);
+                    const tex = prettySymbolic(solText);
+                    showResult("Solution", "\\[" + tex + "\\]", expr);
+
+                    addStep("<b>Step 1:</b> Move everything to one side.");
+                    addStep("\\(" + prettySymbolic(equation) + " = 0\\)");
+                    addStep("<b>Step 2:</b> Solve for \\(" + escapeHtml(variable) + "\\).");
+                    addStep("Solution: \\(" + tex + "\\)");
+                    renderMath();
+                    return true;
+                } catch {
+                    return false;
+                }
+            }
+
+            function quadraticSolve(expr) {
+                const variable = (variableEl.value || "x").trim() || "x";
+                const clean = normalize(expr);
+                const sides = clean.split("=");
+                const poly = sides.length === 2
+                    ? "(" + sides[0] + ")-(" + sides[1] + ")"
+                    : clean;
+
+                try {
+                    const p = nerd(poly).buildFunction([variable]);
+                    const sample = [0, 1, 2, 3];
+                    // Extract coefficients symbolically with Nerdamer.
+                    const expanded = nerd(poly).expand().toString();
+                    const aExpr = nerd("diff((" + expanded + ")," + variable + ",2)/2").evaluate().toString();
+                    const bExpr = nerd("diff((" + expanded + ")," + variable + ")").evaluate().toString();
+                    const cExpr = nerd(expanded.replace(new RegExp("\\b" + variable + "\\b", "g"), "0")).evaluate().toString();
+
+                    const a = Number(aExpr);
+                    const b = Number(bExpr);
+                    const c = Number(cExpr);
+
+                    if (![a, b, c].every(Number.isFinite) || Math.abs(a) < 1e-14) return false;
+
+                    const D = b * b - 4 * a * c;
+                    let rootHtml = "";
+
+                    if (D > 0) {
+                        const r1 = (-b + Math.sqrt(D)) / (2 * a);
+                        const r2 = (-b - Math.sqrt(D)) / (2 * a);
+                        rootHtml = `\\[x_1=${r1.toPrecision(10)},\\qquad x_2=${r2.toPrecision(10)}\\]`;
+                    } else if (Math.abs(D) < 1e-12) {
+                        const r = -b / (2 * a);
+                        rootHtml = `\\[x=${r.toPrecision(10)}\\]`;
+                    } else {
+                        const real = -b / (2 * a);
+                        const imag = Math.sqrt(-D) / (2 * a);
+                        rootHtml = `\\[x_1=${real.toPrecision(8)}+${imag.toPrecision(8)}i,\\qquad x_2=${real.toPrecision(8)}-${imag.toPrecision(8)}i\\]`;
+                    }
+
+                    showResult("Quadratic solution", rootHtml, expr);
+                    addStep(`Standard form: \\(${a}x^2 ${b >= 0 ? "+" : "-"} ${Math.abs(b)}x ${c >= 0 ? "+" : "-"} ${Math.abs(c)}=0\\)`);
+                    addStep(`Discriminant: \\(\\Delta=b^2-4ac=${D}\\).`);
+                    addStep(D > 0 ? "Two distinct real roots." : D === 0 ? "One repeated real root." : "Two complex conjugate roots.");
+                    addStep("\\(x=\\frac{-b\\pm\\sqrt{\\Delta}}{2a}\\)");
+                    renderMath();
+                    return true;
+                } catch {
+                    return false;
+                }
+            }
+
+            function calculusSolve(expr) {
+                const variable = (variableEl.value || "x").trim() || "x";
+                let clean = normalize(expr);
+
+                try {
+                    // d/dx(f)
+                    let m = clean.match(/^d\/d([a-zA-Z])\((.*)\)$/);
+                    if (m) {
+                        const v = m[1];
+                        const f = m[2];
+                        const result = nerd(f).diff(v).expand().toTeX();
+                        showResult("Derivative", "\\[" + result + "\\]", expr);
+                        addStep(`<b>Step 1:</b> Identify the function \\(f(${v})\\).`);
+                        addStep(`\\[f(${v})=${prettySymbolic(f)}\\]`);
+                        addStep(`<b>Step 2:</b> Differentiate term by term.`);
+                        addStep(`\\[f'(${v})=${result}\\]`);
+                        renderMath();
+                        return true;
+                    }
+
+                    // integrate(f,x)
+                    m = clean.match(/^integrate\((.*),\s*([a-zA-Z])\)$/);
+                    if (m) {
+                        const f = m[1];
+                        const v = m[2];
+                        const result = nerd(f).integrate(v).expand().toTeX();
+                        showResult("Indefinite integral", "\\[" + result + " + C\\]", expr);
+                        addStep(`<b>Step 1:</b> Integrate with respect to \\(${v}\\).`);
+                        addStep(`\\[\\int ${prettySymbolic(f)}\\,d${v}\\]`);
+                        addStep(`\\[=${result}+C\\]`);
+                        renderMath();
+                        return true;
+                    }
+
+                    // limit(f,x,0)
+                    m = clean.match(/^limit\((.*),\s*([a-zA-Z]),\s*(.+)\)$/);
+                    if (m) {
+                        const f = m[1], v = m[2], at = m[3];
+                        let result;
+                        try {
+                            result = nerd(`limit(${f},${v},${at})`).evaluate().toTeX();
+                        } catch {
+                            result = nerd(f).limit(v, at).toTeX();
+                        }
+                        showResult("Limit", "\\[" + result + "\\]", expr);
+                        addStep(`<b>Step 1:</b> Approach \\(${v}=${prettySymbolic(at)}\\).`);
+                        addStep(`\\[\\lim_{${v}\\to ${prettySymbolic(at)}} ${prettySymbolic(f)}\\]`);
+                        addStep(`\\[=${result}\\]`);
+                        renderMath();
+                        return true;
+                    }
+
+                    return false;
+                } catch {
+                    return false;
+                }
+            }
+
+            function trigSolve(expr) {
+                const clean = normalize(expr);
+                const mode = angleMode.value;
+
+                // Basic numerical trig expression.
+                try {
+                    if (/^[0-9a-zA-Z_().,+\-*/^ ]+$/.test(clean) && !clean.includes("=")) {
+                        let source = clean;
+                        if (mode === "deg") {
+                            source = source
+                                .replace(/\bsin\(/g, "sin((pi/180)*")
+                                .replace(/\bcos\(/g, "cos((pi/180)*")
+                                .replace(/\btan\(/g, "tan((pi/180)*");
+                        }
+                        const result = math.evaluate(source);
+                        if (isValidNumber(result)) {
+                            const shown = Number(result).toPrecision(12);
+                            showResult("Trigonometric value", `\\[${shown}\\]`, expr);
+                            addStep(`Evaluated in <b>${mode === "deg" ? "degree" : "radian"}</b> mode.`);
+                            return true;
+                        }
+                    }
+
+                    // Common sin(x)=number / cos(x)=number / tan(x)=number
+                    const m = clean.match(/^(sin|cos|tan)\(\s*([a-zA-Z])\s*\)\s*=\s*(-?\d*\.?\d+)$/);
+                    if (m) {
+                        const fn = m[1], v = m[2], val = Number(m[3]);
+                        let base;
+                        if (fn === "sin") base = Math.asin(val);
+                        if (fn === "cos") base = Math.acos(val);
+                        if (fn === "tan") base = Math.atan(val);
+                        if (!Number.isFinite(base)) {
+                            showResult("No real solution", "The entered value is outside the real range of this trig function.", expr);
+                            return true;
+                        }
+                        const baseOut = mode === "deg" ? base * 180 / Math.PI : base;
+                        const period = fn === "tan" ? (mode === "deg" ? 180 : Math.PI) : (mode === "deg" ? 360 : 2 * Math.PI);
+                        const second = fn === "sin"
+                            ? (mode === "deg" ? 180 - baseOut : Math.PI - base)
+                            : fn === "cos"
+                                ? -baseOut
+                                : null;
+
+                        showResult("Trigonometric solution",
+                            `\\[${v}=${baseOut.toPrecision(10)}${mode === "deg" ? "^\\circ" : ""}\\]`,
+                            expr);
+
+                        addStep(`Principal solution: \\(${v}=${baseOut.toPrecision(10)}${mode === "deg" ? "^\\circ" : ""}\\).`);
+                        if (second !== null) {
+                            addStep(`General family: \\(${v}=${baseOut.toPrecision(7)}+${period.toPrecision(7)}k\\) or \\(${v}=${second.toPrecision(7)}+${period.toPrecision(7)}k\\).`);
+                        } else {
+                            addStep(`General family: \\(${v}=${baseOut.toPrecision(7)}+${period.toPrecision(7)}k\\).`);
+                        }
+                        renderMath();
+                        return true;
+                    }
+                } catch { }
+                return false;
+            }
+
+            function algebraSolve(expr) {
+                if (solveLinearOrGeneralEquation(expr)) return true;
+
+                try {
+                    const clean = normalize(expr);
+                    const variable = (variableEl.value || "x").trim() || "x";
+                    const simplified = nerd(clean).simplify().toTeX();
+                    const expanded = nerd(clean).expand().toTeX();
+                    showResult("Simplified expression", "\\[" + simplified + "\\]", expr);
+                    addStep("<b>Simplify:</b>");
+                    addStep(`\\[${simplified}\\]`);
+                    if (expanded !== simplified) {
+                        addStep("<b>Expanded:</b>");
+                        addStep(`\\[${expanded}\\]`);
+                    }
+                    renderMath();
+                    return true;
+                } catch {
+                    return false;
+                }
+            }
+
+            function graphFunction(expr) {
+                const canvas = $("graph");
+                const ctx = canvas.getContext("2d");
+                const rect = canvas.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                const W = Math.max(500, Math.floor(rect.width * dpr));
+                const H = Math.max(260, Math.floor(310 * dpr));
+                canvas.width = W; canvas.height = H;
+
+                ctx.clearRect(0, 0, W, H);
+
+                const clean = normalize(expr);
+                const xmin = -10, xmax = 10, ymin = -7, ymax = 7;
+
+                function px(x) { return (x - xmin) / (xmax - xmin) * W; }
+                function py(y) { return H - (y - ymin) / (ymax - ymin) * H; }
+
+                ctx.strokeStyle = "#3d3f45";
+                ctx.lineWidth = 1;
+
+                for (let x = -10; x <= 10; x++) {
+                    ctx.beginPath(); ctx.moveTo(px(x), 0); ctx.lineTo(px(x), H); ctx.stroke();
+                }
+                for (let y = -7; y <= 7; y++) {
+                    ctx.beginPath(); ctx.moveTo(0, py(y)); ctx.lineTo(W, py(y)); ctx.stroke();
+                }
+
+                ctx.strokeStyle = "#858993";
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(px(0), 0); ctx.lineTo(px(0), H); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, py(0)); ctx.lineTo(W, py(0)); ctx.stroke();
+
+                let compiled;
+                try { compiled = math.compile(clean); }
+                catch {
+                    showResult("Graph error", "I could not parse that function.", expr);
+                    return;
+                }
+
+                ctx.strokeStyle = "#f5a9b8";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+
+                let started = false;
+                for (let i = 0; i <= W; i++) {
+                    const x = xmin + (i / W) * (xmax - xmin);
+                    let y;
+                    try { y = compiled.evaluate({ x }); } catch { y = NaN; }
+                    if (typeof y !== "number" || !Number.isFinite(y) || Math.abs(y) > 100) {
+                        started = false;
+                        continue;
+                    }
+                    const X = px(x), Y = py(y);
+                    if (!started) { ctx.moveTo(X, Y); started = true; }
+                    else ctx.lineTo(X, Y);
+                }
+                ctx.stroke();
+
+                graphWrap.classList.remove("hidden");
+                showResult("Graph", `\\[y=${prettySymbolic(clean)}\\]`, expr);
+                addStep("Displayed window: \\(-10\\le x\\le10\\), \\(-7\\le y\\le7\\).");
+                renderMath();
+            }
+
+            function solve() {
+                const expr = input.value.trim();
+                if (!expr) {
+                    showResult("Input required", "Enter a mathematical expression.", "");
+                    return;
+                }
+
+                graphWrap.classList.toggle("hidden", currentMode !== "graph");
+
+                let ok = false;
+
+                try {
+                    if (currentMode === "quadratic") {
+                        ok = quadraticSolve(expr);
+                    } else if (currentMode === "calculus") {
+                        ok = calculusSolve(expr);
+                    } else if (currentMode === "trigonometry") {
+                        ok = trigSolve(expr);
+                    } else if (currentMode === "graph") {
+                        graphFunction(expr);
+                        ok = true;
+                    } else {
+                        // Auto-detect special calculus notation even in Algebra mode.
+                        ok = calculusSolve(expr) || trigSolve(expr) || algebraSolve(expr);
+                    }
+                } catch (e) {
+                    ok = false;
+                }
+
+                if (!ok) {
+                    showResult("Could not solve", "Check the expression syntax and try again.", expr);
+                    steps.innerHTML = `
+        <div class="step error">
+          Examples: <b>2x+3=11</b>, <b>4x^2-5x-12=0</b>,
+          <b>d/dx(x^3)</b>, <b>integrate(x^2,x)</b>,
+          <b>limit(sin(x)/x,x,0)</b>.
+        </div>`;
+                }
+
+                addHistory(expr, answer.textContent);
+            }
+
+            function addHistory(q, a) {
+                history.unshift({ q, a });
+                history = history.slice(0, 20);
+                renderHistory();
+            }
+
+            function renderHistory() {
+                if (!history.length) {
+                    historyEl.innerHTML = '<div class="notice">No calculations yet.</div>';
+                    return;
+                }
+                historyEl.innerHTML = history.map((item, i) =>
+                    `<button class="history-item" data-history="${i}">
+        <div class="q">${escapeHtml(item.q)}</div>
+        <div class="a">${escapeHtml(item.a)}</div>
+      </button>`
+                ).join("");
+                historyEl.querySelectorAll("[data-history]").forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        const item = history[Number(btn.dataset.history)];
+                        input.value = item.q;
+                        input.focus();
+                    });
+                });
+            }
+
+            function insertAtCursor(text) {
+                const start = input.selectionStart ?? input.value.length;
+                const end = input.selectionEnd ?? input.value.length;
+                input.value = input.value.slice(0, start) + text + input.value.slice(end);
+                const pos = start + text.length;
+                input.focus();
+                input.setSelectionRange(pos, pos);
+            }
+
+            document.querySelectorAll("[data-insert]").forEach(btn => {
+                btn.addEventListener("click", () => insertAtCursor(btn.dataset.insert));
+            });
+
+            document.querySelectorAll("[data-example]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    input.value = btn.dataset.example;
+                    input.focus();
+                });
+            });
+
+            document.querySelectorAll(".tab").forEach(tab => {
+                tab.addEventListener("click", () => {
+                    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+                    tab.classList.add("active");
+                    currentMode = tab.dataset.mode;
+                    modeDescription.textContent = descriptions[currentMode];
+                    graphWrap.classList.toggle("hidden", currentMode !== "graph");
+
+                    if (currentMode === "quadratic") input.placeholder = "Try: 4x^2 - 5x - 12 = 0";
+                    if (currentMode === "calculus") input.placeholder = "Try: d/dx(x^3 + 2x^2)";
+                    if (currentMode === "trigonometry") input.placeholder = "Try: sin(pi/6) or sin(x)=0.5";
+                    if (currentMode === "graph") input.placeholder = "Try: sin(x) or x^2 - 4";
+                    if (currentMode === "algebra") input.placeholder = "Try: 4x^2 - 5x - 12 = 0";
+                });
+            });
+
+            $("solveBtn").addEventListener("click", solve);
+
+            document.querySelectorAll('[data-action="solve"]').forEach(b => b.addEventListener("click", solve));
+
+            document.querySelector('[data-action="clear"]').addEventListener("click", () => {
+                input.value = "";
+                answer.textContent = "Enter a problem and press Solve.";
+                steps.innerHTML = "";
+                setDisplay("Ready", "0");
+                graphWrap.classList.add("hidden");
+                input.focus();
+            });
+
+            document.querySelector('[data-action="backspace"]').addEventListener("click", () => {
+                const s = input.selectionStart ?? input.value.length;
+                const e = input.selectionEnd ?? input.value.length;
+                if (s !== e) {
+                    input.value = input.value.slice(0, s) + input.value.slice(e);
+                    input.setSelectionRange(s, s);
+                } else if (s > 0) {
+                    input.value = input.value.slice(0, s - 1) + input.value.slice(s);
+                    input.setSelectionRange(s - 1, s - 1);
+                }
+                input.focus();
+            });
+
+            $("clearHistory").addEventListener("click", () => {
+                history = [];
+                renderHistory();
+            });
+
+            $("copyAnswer").addEventListener("click", async () => {
+                const text = lastAnswerText || answer.textContent;
+                if (!text) return;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    $("copyAnswer").textContent = "Copied";
+                    setTimeout(() => $("copyAnswer").textContent = "Copy answer", 1200);
+                } catch {
+                    $("copyAnswer").textContent = "Select manually";
+                    setTimeout(() => $("copyAnswer").textContent = "Copy answer", 1200);
+                }
+            });
+
+            input.addEventListener("keydown", e => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    solve();
+                }
+            });
+
+            // Helpful automatic mode selection for the screenshot examples.
+            input.addEventListener("input", () => {
+                const v = input.value.trim();
+                if (/^d\/d/i.test(v) || /^integrate/i.test(v) || /^limit/i.test(v)) {
+                    currentMode = "calculus";
+                    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "calculus"));
+                    modeDescription.textContent = descriptions.calculus;
+                }
+                if (/^4x\^2|x\^2|quadratic/i.test(v)) {
+                    // Do not force quadratic mode; users may be entering a general expression.
+                }
+            });
+
+            // Keep graph responsive.
+            window.addEventListener("resize", () => {
+                if (currentMode === "graph" && input.value.trim()) graphFunction(input.value.trim());
+            });
+
+            // Initial display.
+            setDisplay("Ready", "0");
+            renderHistory();
+        })();
+    </script>
+</body>
+
+</html>

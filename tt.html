@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MathLab — Advanced Scientific Calculator</title>
+
+<!-- Math rendering + symbolic/numeric engines -->
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjs@14.0.1/lib/browser/math.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/all.min.js"></script>
+
+<style>
+:root{
+  --bg:#202126;
+  --bg2:#222328;
+  --key:#25262a;
+  --key2:#303136;
+  --border:#45474e;
+  --text:#f7f7f8;
+  --muted:#9da1aa;
+  --algebra:#302d39;
+  --trig:#293226;
+  --calc:#432e32;
+  --equal-algebra:#c5adff;
+  --equal-trig:#79a88f;
+  --equal-calc:#ff9fae;
+  --line:#4a4c52;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+body{
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  padding:10px 0 25px;
+}
+button,input{font:inherit}
+button{border:0}
+.app{
+  width:min(100%,1000px);
+  margin:0 auto;
+}
+.display{
+  height:84px;
+  border:1px solid #44464c;
+  border-radius:25px;
+  background:#202126;
+  position:relative;
+  overflow:hidden;
+}
+.display-text{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  padding:0 62px 0 20px;
+  text-align:right;
+  overflow:hidden;
+}
+.display-text .math{
+  font-size:29px;
+  white-space:nowrap;
+  overflow:auto hidden;
+}
+.display-icons{
+  position:absolute;
+  right:28px;
+  top:27px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  color:#eee;
+  font-size:23px;
+  line-height:15px;
+}
+.tabs{
+  height:68px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:flex-end;
+  padding-left:0;
+}
+.tab{
+  height:55px;
+  padding:0 0;
+  margin-right:49px;
+  color:#9ea2ab;
+  background:transparent;
+  font-size:20px;
+  position:relative;
+  cursor:pointer;
+}
+.tab.active{color:#f6f7f8}
+.tab.active::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:3px;
+  border-radius:3px 3px 0 0;
+  background:#b8d0ff;
+}
+.keyboard{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  grid-auto-rows:63px;
+  gap:6px;
+  padding-top:13px;
+}
+.key{
+  min-width:0;
+  border-radius:32px;
+  background:var(--key);
+  color:#f4f4f5;
+  font-size:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:.12s;
+  user-select:none;
+}
+.key:hover{filter:brightness(1.12)}
+.key:active{transform:scale(.97)}
+.key.fn{
+  background:var(--algebra);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:20px;
+}
+.key.fn.trig{background:var(--trig)}
+.key.fn.calc{background:var(--calc)}
+.key.op{background:var(--key2);font-size:22px}
+.key.equal.algebra{background:var(--equal-algebra);color:#17151e;font-size:29px}
+.key.equal.trig{background:var(--equal-trig);color:#17231e;font-size:29px}
+.key.equal.calc{background:var(--equal-calc);color:#28171b;font-size:29px}
+.result-panel{
+  margin-top:12px;
+  border:1px solid var(--border);
+  border-radius:18px;
+  background:#1b1c20;
+  padding:13px 17px;
+  display:none;
+}
+.result-panel.show{display:block}
+.result-title{
+  color:#9fa3ac;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:8px;
+}
+.result-answer{
+  font-size:23px;
+  overflow-wrap:anywhere;
+}
+.steps{
+  color:#d3d5da;
+  margin-top:10px;
+  line-height:1.65;
+}
+.step{
+  padding:7px 0;
+  border-bottom:1px solid #33353a;
+}
+.error{color:#ff9e9e}
+.examples{
+  display:grid;
+  grid-template-columns:auto auto auto;
+  justify-content:start;
+  gap:18px 24px;
+  margin-top:26px;
+  align-items:start;
+}
+.example{
+  border:1px solid #484a50;
+  border-radius:60px;
+  min-height:124px;
+  padding:15px 20px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  background:transparent;
+  color:#fff;
+  cursor:pointer;
+  text-align:left;
+  min-width:0;
+}
+.example:hover{background:#25262b}
+.example .label{
+  color:#a8acb5;
+  font-size:16px;
+  margin-bottom:15px;
+  white-space:nowrap;
+}
+.example .formula{
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:27px;
+  white-space:nowrap;
+}
+.expand-row{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:-3px;
+}
+.expand{
+  width:55px;
+  height:55px;
+  border-radius:50%;
+  border:1px solid #484a50;
+  background:transparent;
+  color:#dfe1e6;
+  font-size:25px;
+  cursor:pointer;
+}
+.more-examples{
+  display:none;
+  grid-template-columns:repeat(3,auto);
+  gap:20px 24px;
+  margin-top:17px;
+  align-items:start;
+}
+.more-examples.open{display:grid}
+.mode-input{
+  position:absolute;
+  width:1px;height:1px;
+  opacity:0;
+  pointer-events:none;
+}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@media(max-width:820px){
+  .app{width:96%}
+  .examples{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .more-examples{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .example .formula{font-size:23px}
+}
+@media(max-width:620px){
+  body{padding-top:6px}
+  .display{height:76px}
+  .tabs{height:57px}
+  .tab{font-size:17px;height:46px;margin-right:28px}
+  .keyboard{grid-template-columns:repeat(4,1fr);grid-auto-rows:54px}
+  .examples,.more-examples{grid-template-columns:1fr}
+  .example{min-height:94px;border-radius:35px}
+  .example .label{margin-bottom:9px}
+  .example .formula{font-size:23px}
+}
+</style>
+</head>
+
+<body>
+<div class="app" id="calculator">
+
+  <section class="display" aria-label="Calculator display">
+    <div class="display-text">
+      <div id="displayMath" class="math"></div>
+    </div>
+    <div class="display-icons" aria-hidden="true">
+      <span>⌄</span>
+      <span>⌃</span>
+    </div>
+  </section>
+
+  <nav class="tabs" aria-label="Calculator modes">
+    <button class="tab active" data-mode="algebra">Algebra</button>
+    <button class="tab" data-mode="trigonometry">Trigonometry</button>
+    <button class="tab" data-mode="calculus">Calculus</button>
+  </nav>
+
+  <section id="keyboard" class="keyboard" aria-label="Calculator keypad"></section>
+
+  <section id="resultPanel" class="result-panel" aria-live="polite">
+    <div class="result-title">Solution</div>
+    <div id="resultAnswer" class="result-answer"></div>
+    <div id="resultSteps" class="steps"></div>
+  </section>
+
+  <section class="examples" id="examples">
+    <button class="example" data-example="6*x + 5 = 14">
+      <span class="label">Linear equations</span>
+      <span class="formula">\(6x+5=14\)</span>
+    </button>
+
+    <button class="example" data-example="(x+5)(x+2)">
+      <span class="label">Polynomials</span>
+      <span class="formula">\((x+5)(x+2)\)</span>
+    </button>
+
+    <button class="example" data-example="4*x^2 - 5*x - 12 = 0">
+      <span class="label">Quadratic equations</span>
+      <span class="formula">\(4x^2-5x-12=0\)</span>
+    </button>
+  </section>
+
+  <div id="moreExamples" class="more-examples">
+
+    <button class="example" data-example="(3*x)/(x^2+3) - (2*x)/(x^2+1)">
+      <span class="label">Rational expressions</span>
+      <span class="formula">\(\frac{3x}{x^2+3}-\frac{2x}{x^2+1}\)</span>
+    </button>
+
+    <button class="example" data-example="5^x = 3125">
+      <span class="label">Exponents</span>
+      <span class="formula">\(5^x=3125\)</span>
+    </button>
+
+    <button class="example" data-example="5*(3-2*i)+2*i*(4+6*i)">
+      <span class="label">Complex numbers</span>
+      <span class="formula">\(5(3-2i)+2i(4+6i)\)</span>
+    </button>
+
+    <button class="example" data-example="sin(x)^2 + cos(x)^2">
+      <span class="label">Trigonometry</span>
+      <span class="formula">\(\sin^2x+\cos^2x\)</span>
+    </button>
+
+    <button class="example" data-example="-2*x + 7 > -11">
+      <span class="label">Inequalities</span>
+      <span class="formula">\(-2x+7>-11\)</span>
+    </button>
+
+    <button class="example" data-example="7*x + 2*y = 24; 8*x + 2*y = 30">
+      <span class="label">System of linear equations</span>
+      <span class="formula">\(7x+2y=24;\;8x+2y=30\)</span>
+    </button>
+
+    <button class="example" data-example="sqrt(2*x+7) - x = 2">
+      <span class="label">Radicals</span>
+      <span class="formula">\(\sqrt{2x+7}-x=2\)</span>
+    </button>
+
+    <button class="example" data-example="abs(2*x-2)=4">
+      <span class="label">Absolute value</span>
+      <span class="formula">\(|2x-2|=4\)</span>
+    </button>
+
+    <button class="example" data-example="log(25*x,10)=3">
+      <span class="label">Logarithms</span>
+      <span class="formula">\(\log(25x)=3\)</span>
+    </button>
+
+    <button class="example" data-example="C(6,4)">
+      <span class="label">Probability</span>
+      <span class="formula">\(C(6,4)\)</span>
+    </button>
+
+    <button class="example" data-example="integrate(y^2 - 3*y + 5, y)">
+      <span class="label">Integrals</span>
+      <span class="formula">\(\int(y^2-3y+5)\,dy\)</span>
+    </button>
+
+    <button class="example" data-example="d/dx(x^2*cos(x))">
+      <span class="label">Derivatives</span>
+      <span class="formula">\(\frac{d}{dx}x^2\cos x\)</span>
+    </button>
+
+    <button class="example" data-example="[3,0] + [-2,0]">
+      <span class="label">Vectors</span>
+      <span class="formula">\([3\;\;0]+[-2\;\;0]\)</span>
+    </button>
+
+    <button class="example" data-example="[[1,2],[3,4]] * [[1,0],[0,1]]">
+      <span class="label">Matrices</span>
+      <span class="formula">\(\begin{bmatrix}1&2\\3&4\end{bmatrix}\cdot\begin{bmatrix}1&0\\0&1\end{bmatrix}\)</span>
+    </button>
+
+  </div>
+
+  <div class="expand-row">
+    <button id="expandBtn" class="expand" aria-expanded="false" aria-label="Show more examples">⌄</button>
+  </div>
+
+  <input id="hiddenInput" class="mode-input" autocomplete="off">
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const keyboard = document.getElementById("keyboard");
+  const displayMath = document.getElementById("displayMath");
+  const resultPanel = document.getElementById("resultPanel");
+  const resultAnswer = document.getElementById("resultAnswer");
+  const resultSteps = document.getElementById("resultSteps");
+  const moreExamples = document.getElementById("moreExamples");
+  const expandBtn = document.getElementById("expandBtn");
+
+  let mode = "algebra";
+  let expression = "";
+
+  const keys = {
+    algebra: [
+      ["□","fn"],["√□","fn"],["<","fn"],["(",""],[")",""],["⌫","action-back"],["AC","action-clear"],
+      ["□","fn"],["▯","fn"],["≤","fn"],["7",""],["8",""],["9",""],["÷","op"],
+      ["log□","fn"],["□!","fn"],[">","fn"],["4",""],["5",""],["6",""],["×","op"],
+      ["i","fn"],["%","fn"],["≥","fn"],["1",""],["2",""],["3",""],["−","op"],
+      ["x","fn"],["y","fn"],["=","fn"],["0",""],[".",""],["➤","equal"],["+","op"]
+    ],
+    trigonometry: [
+      ["sin","fn trig"],["cos","fn trig"],["tan","fn trig"],["(",""],[")",""],["⌫","action-back"],["AC","action-clear"],
+      ["csc","fn trig"],["sec","fn trig"],["cot","fn trig"],["7",""],["8",""],["9",""],["÷","op"],
+      ["arcsin","fn trig"],["arccos","fn trig"],["arctan","fn trig"],["4",""],["5",""],["6",""],["×","op"],
+      ["□²","fn trig"],["□°","fn trig"],["π","fn trig"],["1",""],["2",""],["3",""],["−","op"],
+      ["x","fn trig"],["y","fn trig"],["=","fn trig"],["0",""],[".",""],["➤","equal"],["+","op"]
+    ],
+    calculus: [
+      ["d/d□","fn calc"],["∞","fn calc"],["√□","fn calc"],["(",""],[")",""],["⌫","action-back"],["AC","action-clear"],
+      ["lim\n□→□","fn calc"],["lim\n□→□+","fn calc"],["lim\n□→□−","fn calc"],["7",""],["8",""],["9",""],["÷","op"],
+      ["log□","fn calc"],["C(n,k)","fn calc"],["P(n,k)","fn calc"],["4",""],["5",""],["6",""],["×","op"],
+      ["∑","fn calc"],["∫ □","fn calc"],["∫□ □","fn calc"],["1",""],["2",""],["3",""],["−","op"],
+      ["x","fn calc"],["y","fn calc"],["e","fn calc"],["0",""],[".",""],["➤","equal"],["+","op"]
+    ]
+  };
+
+  const inserts = {
+    "sin":"sin(","cos":"cos(","tan":"tan(","csc":"csc(","sec":"sec(","cot":"cot(",
+    "arcsin":"asin(","arccos":"acos(","arctan":"atan(","√□":"sqrt(","π":"pi",
+    "log□":"log(","d/d□":"d/dx(","lim\n□→□":"limit(","lim\n□→□+":"limit(","lim\n□→□−":"limit(",
+    "∫ □":"integrate(","∫□ □":"integrate(","C(n,k)":"C(","P(n,k)":"P(","□!":"!","□²":"^2","□°":"°",
+    "x":"x","y":"y","e":"e","i":"i","∞":"infinity","=":"="
+  };
+
+  function renderKeyboard() {
+    keyboard.innerHTML = "";
+    keys[mode].forEach(([label, cls]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "key " + cls;
+      b.textContent = label;
+      b.setAttribute("aria-label", label.replace("\n"," "));
+      b.addEventListener("click", () => handleKey(label, cls));
+      keyboard.appendChild(b);
+    });
+  }
+
+  function handleKey(label, cls) {
+    if (cls.includes("action-clear")) {
+      expression = "";
+      clearResult();
+      updateDisplay();
+      return;
+    }
+    if (cls.includes("action-back")) {
+      expression = expression.slice(0,-1);
+      updateDisplay();
+      return;
+    }
+    if (cls.includes("equal")) {
+      solve();
+      return;
+    }
+
+    if (label === "−") expression += "-";
+    else if (label === "×") expression += "*";
+    else if (label === "÷") expression += "/";
+    else if (label === "□") expression += "x";
+    else if (label === "<" || label === ">" || label === "≤" || label === "≥") expression += label;
+    else if (label === "log□") expression += "log(";
+    else if (label === "lim\n□→□" || label === "lim\n□→□+" || label === "lim\n□→□−") expression += "limit(";
+    else if (label === "d/d□") expression += "d/dx(";
+    else if (label === "∫ □" || label === "∫□ □") expression += "integrate(";
+    else if (label === "□²") expression += "^2";
+    else if (label === "□°") expression += "°";
+    else if (label === "√□") expression += "sqrt(";
+    else if (inserts[label]) expression += inserts[label];
+    else expression += label;
+
+    updateDisplay();
+  }
+
+  function updateDisplay() {
+    if (!expression) {
+      displayMath.innerHTML = "";
+      return;
+    }
+    displayMath.innerHTML = "\\(" + toLatex(expression) + "\\)";
+    typeset(displayMath);
+  }
+
+  function toLatex(s) {
+    return String(s)
+      .replace(/\\/g,"\\\\")
+      .replace(/pi/g,"\\pi ")
+      .replace(/infinity/g,"\\infty")
+      .replace(/\*/g,"\\,")
+      .replace(/\^2/g,"^2")
+      .replace(/sqrt\(([^()]*)\)/g,"\\\\sqrt{$1}")
+      .replace(/sin\(/g,"\\\\sin(")
+      .replace(/cos\(/g,"\\\\cos(")
+      .replace(/tan\(/g,"\\\\tan(")
+      .replace(/log\(/g,"\\\\log(")
+      .replace(/d\/dx\(/g,"\\\\frac{d}{dx}(");
+  }
+
+  function typeset(el) {
+    if (window.MathJax && MathJax.typesetPromise) {
+      MathJax.typesetPromise([el]).catch(()=>{});
+    }
+  }
+
+  function clearResult() {
+    resultPanel.classList.remove("show");
+    resultAnswer.innerHTML = "";
+    resultSteps.innerHTML = "";
+  }
+
+  function normalize(s) {
+    return String(s).trim()
+      .replace(/[−–—]/g,"-")
+      .replace(/×/g,"*")
+      .replace(/÷/g,"/")
+      .replace(/π/g,"pi")
+      .replace(/²/g,"^2")
+      .replace(/³/g,"^3");
+  }
+
+  function showResult(title, answerHtml, stepsHtml="") {
+    resultPanel.classList.add("show");
+    resultAnswer.innerHTML = answerHtml;
+    resultSteps.innerHTML = stepsHtml;
+    typeset(resultPanel);
+  }
+
+  function symbolic(expr) {
+    if (!window.nerdamer) throw new Error("Symbolic engine is loading.");
+    return nerdamer(expr);
+  }
+
+  function solveEquation(expr) {
+    const parts = expr.split("=");
+    if (parts.length !== 2) return false;
+    const v = "x";
+    const eq = "(" + normalize(parts[0]) + ")-(" + normalize(parts.slice(1).join("=")) + ")";
+    const sol = symbolic(eq).solveFor(v);
+    const tex = sol.toTeX();
+
+    showResult(
+      "Solution",
+      "\\[" + tex + "\\]",
+      "<div class='step'><b>1.</b> Move all terms to one side.</div>" +
+      "<div class='step'>\\[" + symbolic(eq).toTeX() + "=0\\]</div>" +
+      "<div class='step'><b>2.</b> Solve for \\(x\\).</div>" +
+      "<div class='step'>\\[x=" + tex + "\\]</div>"
+    );
+    return true;
+  }
+
+  function quadratic(expr) {
+    const clean = normalize(expr);
+    const sides = clean.split("=");
+    const poly = sides.length === 2
+      ? "(" + sides[0] + ")-(" + sides[1] + ")"
+      : clean;
+
+    const expanded = symbolic(poly).expand();
+    const a = Number(symbolic("coeff((" + expanded.toString() + "),x,2)").evaluate().text());
+    const b = Number(symbolic("coeff((" + expanded.toString() + "),x,1)").evaluate().text());
+    const c = Number(symbolic("coeff((" + expanded.toString() + "),x,0)").evaluate().text());
+
+    if (![a,b,c].every(Number.isFinite) || Math.abs(a)<1e-12) return false;
+
+    const D=b*b-4*a*c;
+    let roots;
+
+    if(D>0){
+      const x1=(-b+Math.sqrt(D))/(2*a);
+      const x2=(-b-Math.sqrt(D))/(2*a);
+      roots=`\\[x_1=${x1.toPrecision(10)},\\qquad x_2=${x2.toPrecision(10)}\\]`;
+    }else if(Math.abs(D)<1e-12){
+      const x=-b/(2*a);
+      roots=`\\[x=${x.toPrecision(10)}\\]`;
+    }else{
+      const re=-b/(2*a);
+      const im=Math.sqrt(-D)/(2*a);
+      roots=`\\[x_1=${re.toPrecision(8)}+${im.toPrecision(8)}i,\\qquad x_2=${re.toPrecision(8)}-${im.toPrecision(8)}i\\]`;
+    }
+
+    showResult(
+      "Quadratic solution",
+      roots,
+      `<div class='step'>Standard form: \\(${a}x^2 ${b>=0?"+":"-"} ${Math.abs(b)}x ${c>=0?"+":"-"} ${Math.abs(c)}=0\\)</div>`+
+      `<div class='step'>Discriminant: \\(\\Delta=b^2-4ac=${D}\\)</div>`+
+      `<div class='step'>Quadratic formula: \\(x=\\frac{-b\\pm\\sqrt{\\Delta}}{2a}\\)</div>`
+    );
+    return true;
+  }
+
+  function calculus(expr) {
+    let m=expr.match(/^d\/dx\((.*)\)$/);
+    if(m){
+      const f=m[1];
+      const r=symbolic(f).diff("x").expand().toTeX();
+      showResult("Derivative","\\["+r+"\\]",
+        `<div class='step'>Differentiate with respect to \\(x\\).</div>`+
+        `<div class='step'>\\[\\frac{d}{dx}\\left(${symbolic(f).toTeX()}\\right)=${r}\\]</div>`);
+      return true;
+    }
+
+    m=expr.match(/^integrate\((.*),\s*([a-zA-Z])\)$/);
+    if(m){
+      const f=m[1], v=m[2];
+      const r=symbolic(f).integrate(v).expand().toTeX();
+      showResult("Indefinite integral","\\["+r+"+C\\]",
+        `<div class='step'>Integrate with respect to \\(${v}\\).</div>`+
+        `<div class='step'>\\[\\int ${symbolic(f).toTeX()}\\,d${v}=${r}+C\\]</div>`);
+      return true;
+    }
+
+    m=expr.match(/^limit\((.*),\s*([a-zA-Z]),\s*(.+)\)$/);
+    if(m){
+      const f=m[1],v=m[2],at=m[3];
+      let r=symbolic(`limit(${f},${v},${at})`).evaluate().toTeX();
+      showResult("Limit","\\["+r+"\\]",
+        `<div class='step'>\\[\\lim_{${v}\\to ${symbolic(at).toTeX()}} ${symbolic(f).toTeX()}=${r}\\]</div>`);
+      return true;
+    }
+    return false;
+  }
+
+  function trig(expr) {
+    const clean=normalize(expr);
+    if(clean.includes("=")) return solveEquation(clean);
+
+    const result=math.evaluate(clean);
+    if(typeof result==="number" && Number.isFinite(result)){
+      showResult("Trigonometric value","\\["+result.toPrecision(12)+"\\]",
+        "<div class='step'>Expression evaluated numerically.</div>");
+      return true;
+    }
+    return false;
+  }
+
+  function general(expr) {
+    if(solveEquation(expr)) return true;
+
+    if(/^d\/dx\(|^integrate\(|^limit\(/.test(expr) && calculus(expr)) return true;
+
+    const r=symbolic(expr).simplify();
+    const expanded=symbolic(expr).expand();
+
+    showResult("Simplified expression","\\["+r.toTeX()+"\\]",
+      `<div class='step'><b>Simplified:</b> \\[${r.toTeX()}\\]</div>`+
+      `<div class='step'><b>Expanded:</b> \\[${expanded.toTeX()}\\]</div>`);
+    return true;
+  }
+
+  function solve() {
+    if(!expression.trim()) return;
+
+    const clean=normalize(expression);
+    try{
+      let ok=false;
+
+      if(mode==="calculus") ok=calculus(clean);
+      else if(mode==="trigonometry") ok=trig(clean);
+      else {
+        if(/x\^2/.test(clean) && clean.includes("=")) ok=quadratic(clean);
+        if(!ok) ok=calculus(clean);
+        if(!ok) ok=general(clean);
+      }
+
+      if(!ok) throw new Error("Could not solve");
+    }catch(err){
+      showResult("Unable to solve",
+        "<span class='error'>Check the expression and try again.</span>",
+        `<div class='step'>Examples: <b>2*x+3=11</b>, <b>4*x^2-5*x-12=0</b>, <b>d/dx(x^3)</b>, <b>integrate(x^2,x)</b>.</div>`);
+    }
+  }
+
+  document.querySelectorAll(".tab").forEach(tab=>{
+    tab.addEventListener("click",()=>{
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      tab.classList.add("active");
+      mode=tab.dataset.mode;
+      renderKeyboard();
+      clearResult();
+    });
+  });
+
+  document.querySelectorAll("[data-example]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      expression=btn.dataset.example;
+      updateDisplay();
+      solve();
+    });
+  });
+
+  expandBtn.addEventListener("click",()=>{
+    const open=moreExamples.classList.toggle("open");
+    expandBtn.setAttribute("aria-expanded",String(open));
+    expandBtn.textContent=open?"⌃":"⌄";
+  });
+
+  document.addEventListener("keydown",e=>{
+    const tag=(e.target.tagName||"").toLowerCase();
+    if(tag==="input"||tag==="textarea") return;
+
+    if(e.key==="Enter"){ e.preventDefault(); solve(); }
+    else if(e.key==="Backspace"){ expression=expression.slice(0,-1); updateDisplay(); }
+    else if(e.key==="Escape"){ expression=""; clearResult(); updateDisplay(); }
+    else if(/^[0-9.+\-*/()=]$/.test(e.key)){ expression+=e.key; updateDisplay(); }
+  });
+
+  renderKeyboard();
+})();
+</script>
+</body>
+</html>
